@@ -46,7 +46,7 @@ A complete Point of Sale (POS) and Inventory Management System built with Django
 
 | Dashboard | Inventory | POS |
 |-----------|-----------|-----|
-| ![Dashboard](screenshots/dashboard.jpeg) | ![Inventory](screenshots/inventory.png) | ![POS](screenshots/pos.png) |
+| ![Dashboard](screenshots/dashboard.jpeg) | ![Invoice Generator](screenshots/invoice.jpeg) |
 
 ## Installation
 
