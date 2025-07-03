@@ -46,7 +46,7 @@ A complete Point of Sale (POS) and Inventory Management System built with Django
 
 | Dashboard | Inventory | POS |
 |-----------|-----------|-----|
-| ![Dashboard](screenshots/dashboard.png) | ![Inventory](screenshots/inventory.png) | ![POS](screenshots/pos.png) |
+| ![Dashboard](screenshots/dashboard.jpeg) | ![Inventory](screenshots/inventory.png) | ![POS](screenshots/pos.png) |
 
 ## Installation
 
@@ -54,9 +54,10 @@ A complete Point of Sale (POS) and Inventory Management System built with Django
 - Python 3.8+
 - PostgreSQL
 - pip
+- django
 
 ### Setup
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/pos-inventory-system.git
-   cd pos-inventory-system
+   git clone https://github.com/trixsearch/maeshards.git
+   cd maeshards
