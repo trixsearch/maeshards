@@ -1,0 +1,890 @@
+{% extends 'base.html' %} {% load static %} {% block content %}
+<div class="container">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="fw-bold">Create New Invoice</h1>
+      <p class="text-muted mb-0">Add items to generate an invoice</p>
+    </div>
+    <a href="{% url 'item_list' %}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i> Back to Items
+    </a>
+  </div>
+
+  <form method="post" id="invoiceForm">
+    {% csrf_token %}
+    <div class="row">
+      <!-- Left Column: Customer & Item Search -->
+      <div class="col-lg-8">
+        <div class="card mb-4">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Customer Information</h5>
+          </div>
+          <div class="card-body">
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="customerName" class="form-label"
+                  >Customer Name</label
+                >
+                <input
+                  type="text"
+                  class="form-control"
+                  id="customerName"
+                  name="customer_name"
+                  placeholder="Enter customer name"
+                  required
+                />
+              </div>
+              <div class="col-md-6">
+                <label for="customerPhone" class="form-label"
+                  >Phone Number</label
+                >
+                <input
+                  type="text"
+                  class="form-control"
+                  id="customerPhone"
+                  name="customer_phone"
+                  placeholder="Enter phone number"
+                />
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="customerAddress" class="form-label">Address</label>
+              <textarea
+                class="form-control"
+                id="customerAddress"
+                name="customer_address"
+                rows="2"
+                placeholder="Enter customer address"
+              ></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-4">
+          <div class="card-header bg-success text-white">
+            <h5 class="mb-0">Add Items</h5>
+          </div>
+          <div class="card-body">
+            <!-- Searchable Dropdown -->
+            <div class="dropdown mb-3">
+              <button
+                class="btn btn-secondary dropdown-toggle w-100"
+                type="button"
+                id="itemDropdownButton"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                Search and select items
+              </button>
+              <div
+                class="dropdown-menu w-100 p-2"
+                aria-labelledby="itemDropdownButton"
+              >
+                <div class="input-group mb-2">
+                  <span class="input-group-text">
+                    <i class="bi bi-search"></i>
+                  </span>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="itemSearch"
+                    placeholder="Search items..."
+                    autocomplete="off"
+                  />
+                </div>
+                <div
+                  id="dropdownItemList"
+                  style="max-height: 300px; overflow-y: auto"
+                >
+                  {% for item in popular_items %}
+                  <a
+                    class="dropdown-item item-option"
+                    href="#"
+                    data-id="{{ item.id }}"
+                    data-name="{{ item.name }}"
+                    data-price="{{ item.price }}"
+                    data-stock="{{ item.quantity }}"
+                  >
+                    <div class="d-flex justify-content-between">
+                      <span>{{ item.name }}</span>
+                      <span class="text-muted"
+                        >₹{{ item.price }} ({{ item.quantity }} in stock)</span
+                      >
+                    </div>
+                  </a>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+
+            <!-- Selected Item Form -->
+            <div id="selectedItemForm" style="display: none">
+              <div class="card border-success">
+                <div class="card-body">
+                  <div
+                    class="d-flex justify-content-between align-items-center mb-3"
+                  >
+                    <h5 class="card-title mb-0" id="selectedItemName">
+                      Item Name
+                    </h5>
+                    <span class="badge bg-success" id="selectedItemStock"
+                      >Stock: 0</span
+                    >
+                  </div>
+
+                  <div class="row align-items-center">
+                    <div class="col-md-6">
+                      <div class="d-flex align-items-center">
+                        <div class="me-3">
+                          <p class="mb-0">
+                            Price: <span id="selectedItemPrice">₹0.00</span>
+                          </p>
+                        </div>
+                        <div>
+                          <p class="mb-0">
+                            Total:
+                            <span id="selectedItemTotalValue">₹0.00</span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="input-group">
+                        <button
+                          class="btn btn-outline-secondary"
+                          type="button"
+                          id="decreaseQuantity"
+                        >
+                          <i class="bi bi-dash"></i>
+                        </button>
+                        <input
+                          type="number"
+                          class="form-control text-center"
+                          id="itemQuantity"
+                          value="1"
+                          min="1"
+                          max="100"
+                        />
+                        <button
+                          class="btn btn-outline-secondary"
+                          type="button"
+                          id="increaseQuantity"
+                        >
+                          <i class="bi bi-plus"></i>
+                        </button>
+                        <button
+                          class="btn btn-success"
+                          type="button"
+                          id="addToInvoice"
+                        >
+                          <i class="bi bi-cart-plus me-1"></i> Add
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Invoice Items List -->
+            <div class="mt-4">
+              <h5>Items in Invoice</h5>
+              <div class="table-responsive">
+                <table class="table" id="invoiceItemsTable">
+                  <thead>
+                    <tr>
+                      <th>Item</th>
+                      <th>Qty</th>
+                      <th>Price</th>
+                      <th>Total</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr id="emptyInvoiceMessage">
+                      <td colspan="5" class="text-center py-4 text-muted">
+                        <i class="bi bi-cart-x display-6"></i>
+                        <p class="mt-2 mb-0">No items added yet</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Invoice Summary -->
+      <div class="col-lg-4">
+        <div class="card mb-4">
+          <div class="card-header bg-info text-white">
+            <h5 class="mb-0">Invoice Summary</h5>
+          </div>
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <div>
+                <h6 class="mb-0">Invoice #</h6>
+                <p class="mb-0 text-muted" id="invoiceNumber">{{ invoice_number }}</p>
+              </div>
+              <div>
+                <h6 class="mb-0">Date</h6>
+                <p class="mb-0 text-muted" id="invoiceDate">{{ today|date:"F d, Y" }}</p>
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <div class="d-flex justify-content-between mb-2">
+                <span class="fw-bold">Subtotal:</span>
+                <span class="fw-bold" id="subtotalAmount">₹0.00</span>
+              </div>
+
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <div class="mb-2">
+                    <label for="taxType" class="form-label">Tax</label>
+                    <select class="form-select" id="taxType" name="tax_type">
+                      <option value="none">No Tax</option>
+                      <option value="gst">GST (18%)</option>
+                      <option value="custom">Custom Amount</option>
+                      <option value="percent">Percentage</option>
+                    </select>
+                  </div>
+                  <div id="taxCustomField" style="display: none">
+                    <div class="input-group">
+                      <span class="input-group-text">₹</span>
+                      <input
+                        type="number"
+                        class="form-control"
+                        id="taxAmount"
+                        name="tax_amount"
+                        min="0"
+                        step="0.01"
+                        placeholder="Enter tax amount"
+                      />
+                    </div>
+                  </div>
+                  <div id="taxPercentField" style="display: none">
+                    <div class="input-group">
+                      <input
+                        type="number"
+                        class="form-control"
+                        id="taxPercentage"
+                        name="tax_percentage"
+                        min="0"
+                        step="0.1"
+                        placeholder="Enter percentage"
+                      />
+                      <span class="input-group-text">%</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-2">
+                    <label for="discountType" class="form-label"
+                      >Discount</label
+                    >
+                    <select
+                      class="form-select"
+                      id="discountType"
+                      name="discount_type"
+                    >
+                      <option value="none">No Discount</option>
+                      <option value="amount">Amount</option>
+                      <option value="percent">Percentage</option>
+                    </select>
+                  </div>
+                  <div id="discountAmountField" style="display: none">
+                    <div class="input-group">
+                      <span class="input-group-text">₹</span>
+                      <input
+                        type="number"
+                        class="form-control"
+                        id="discountAmount"
+                        name="discount_amount"
+                        min="0"
+                        step="0.01"
+                        placeholder="Enter discount"
+                      />
+                    </div>
+                  </div>
+                  <div id="discountPercentField" style="display: none">
+                    <div class="input-group">
+                      <input
+                        type="number"
+                        class="form-control"
+                        id="discountPercentage"
+                        name="discount_percentage"
+                        min="0"
+                        step="0.1"
+                        placeholder="Enter percentage"
+                      />
+                      <span class="input-group-text">%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-between mb-2">
+                <span>Tax:</span>
+                <span id="taxAmountDisplay">₹0.00</span>
+              </div>
+              <div class="d-flex justify-content-between mb-2">
+                <span>Discount:</span>
+                <span id="discountAmountDisplay">₹0.00</span>
+              </div>
+              <div class="d-flex justify-content-between mt-3 pt-2 border-top">
+                <h5 class="mb-0">Total:</h5>
+                <h3 class="mb-0" id="totalAmount">₹0.00</h3>
+              </div>
+            </div>
+
+            <input type="hidden" id="invoiceItemsData" name="invoice_items" />
+
+            <div class="d-grid gap-2 mt-4">
+              <button type="submit" class="btn btn-primary btn-lg" id="saveInvoiceBtn">
+                <i class="bi bi-save me-2"></i> Save Invoice
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                id="printInvoiceBtn"
+              >
+                <i class="bi bi-printer me-2"></i> Print Invoice
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Print Template (hidden by default) -->
+<div id="printTemplate" style="display: none">
+  <div class="container p-4">
+    <div class="text-center mb-4">
+      <h2>Maeshard Inventory Management</h2>
+      <p class="mb-0">Jabalpur, Madhya Pradesh, India</p>
+      <p>Phone: +91-9109090464 | Email: infomaeshard@gmail.com</p>
+    </div>
+
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <h4>Invoice #<span id="printInvoiceNumber"></span></h4>
+        <p class="mb-1">Date: <span id="printInvoiceDate"></span></p>
+      </div>
+      <div class="col-md-6 text-end">
+        <h4>Customer</h4>
+        <p class="mb-1" id="printCustomerName"></p>
+        <p class="mb-1" id="printCustomerPhone"></p>
+        <p class="mb-1" id="printCustomerAddress"></p>
+      </div>
+    </div>
+
+    <table class="table table-bordered">
+      <thead class="table-light">
+        <tr>
+          <th>Item</th>
+          <th>Quantity</th>
+          <th>Price</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody id="printInvoiceItems">
+        <!-- Items will be inserted here -->
+      </tbody>
+    </table>
+
+    <div class="row justify-content-end">
+      <div class="col-md-4">
+        <table class="table table-bordered">
+          <tr>
+            <th>Subtotal</th>
+            <td id="printSubtotal"></td>
+          </tr>
+          <tr>
+            <th>Tax</th>
+            <td id="printTax"></td>
+          </tr>
+          <tr>
+            <th>Discount</th>
+            <td id="printDiscount"></td>
+          </tr>
+          <tr class="table-active">
+            <th>Total</th>
+            <td id="printTotal"></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="mt-4 text-center">
+      <p>Thank you for your business!</p>
+      <p class="text-muted">Terms & Conditions: Payment due within 15 days</p>
+    </div>
+  </div>
+</div>
+{% endblock %} 
+
+{% block scripts %}
+<script>
+  // Global variables
+  let invoiceItems = [];
+  let selectedItem = null;
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // DOM Elements
+    const itemSearch = document.getElementById("itemSearch");
+    const dropdownItemList = document.getElementById("dropdownItemList");
+    const selectedItemForm = document.getElementById("selectedItemForm");
+    const selectedItemName = document.getElementById("selectedItemName");
+    const selectedItemStock = document.getElementById("selectedItemStock");
+    const selectedItemPrice = document.getElementById("selectedItemPrice");
+    const selectedItemTotalValue = document.getElementById("selectedItemTotalValue");
+    const itemQuantity = document.getElementById("itemQuantity");
+    const invoiceItemsTable = document.getElementById("invoiceItemsTable");
+    const emptyInvoiceMessage = document.getElementById("emptyInvoiceMessage");
+    const subtotalAmount = document.getElementById("subtotalAmount");
+    const taxAmountDisplay = document.getElementById("taxAmountDisplay");
+    const discountAmountDisplay = document.getElementById("discountAmountDisplay");
+    const totalAmount = document.getElementById("totalAmount");
+    const invoiceItemsData = document.getElementById("invoiceItemsData");
+
+    // Search functionality for dropdown
+    itemSearch.addEventListener("input", function () {
+      const searchTerm = this.value.toLowerCase();
+      const items = dropdownItemList.querySelectorAll(".item-option");
+
+      items.forEach((item) => {
+        const itemName = item.dataset.name.toLowerCase();
+        if (itemName.includes(searchTerm)) {
+          item.style.display = "block";
+        } else {
+          item.style.display = "none";
+        }
+      });
+    });
+
+    // Item selection from dropdown
+    dropdownItemList.addEventListener("click", function (e) {
+      if (e.target.closest('.item-option')) {
+        e.preventDefault();
+        const itemElement = e.target.closest('.item-option');
+        const item = {
+          id: parseInt(itemElement.dataset.id),
+          name: itemElement.dataset.name,
+          price: parseFloat(itemElement.dataset.price),
+          stock: parseInt(itemElement.dataset.stock),
+        };
+        selectItem(item);
+      }
+    });
+
+    // Select an item
+    function selectItem(item) {
+      selectedItem = item;
+      selectedItemName.textContent = item.name;
+      selectedItemStock.textContent = `Stock: ${item.stock}`;
+      selectedItemPrice.textContent = `₹${item.price.toFixed(2)}`;
+
+      // Update quantity
+      itemQuantity.value = 1;
+      itemQuantity.max = item.stock;
+      updateItemTotalValue();
+
+      // Show the form
+      selectedItemForm.style.display = "block";
+      
+      // Close dropdown
+      const dropdown = bootstrap.Dropdown.getInstance(document.getElementById('itemDropdownButton'));
+      if (dropdown) {
+        dropdown.hide();
+      }
+    }
+
+    // Update item total value
+    function updateItemTotalValue() {
+      if (!selectedItem) return;
+      const quantity = parseInt(itemQuantity.value) || 1;
+      const total = quantity * selectedItem.price;
+      selectedItemTotalValue.textContent = `₹${total.toFixed(2)}`;
+    }
+
+    // Quantity adjustments
+    document.getElementById("increaseQuantity").addEventListener("click", function () {
+      let quantity = parseInt(itemQuantity.value) || 1;
+      if (quantity < selectedItem.stock) {
+        quantity++;
+        itemQuantity.value = quantity;
+        updateItemTotalValue();
+      }
+    });
+
+    document.getElementById("decreaseQuantity").addEventListener("click", function () {
+      let quantity = parseInt(itemQuantity.value) || 1;
+      if (quantity > 1) {
+        quantity--;
+        itemQuantity.value = quantity;
+        updateItemTotalValue();
+      }
+    });
+
+    itemQuantity.addEventListener("input", updateItemTotalValue);
+
+    // Add item to invoice
+    document.getElementById("addToInvoice").addEventListener("click", function () {
+      if (!selectedItem) return;
+
+      const quantity = parseInt(itemQuantity.value) || 1;
+
+      // Check if item is already in invoice
+      const existingItemIndex = invoiceItems.findIndex(
+        (item) => item.id === selectedItem.id
+      );
+
+      if (existingItemIndex > -1) {
+        // Update existing item quantity
+        invoiceItems[existingItemIndex].quantity += quantity;
+      } else {
+        // Add new item
+        invoiceItems.push({
+          id: selectedItem.id,
+          name: selectedItem.name,
+          price: selectedItem.price,
+          quantity: quantity,
+        });
+      }
+
+      // Update invoice display
+      updateInvoiceDisplay();
+
+      // Reset selection
+      selectedItem = null;
+      selectedItemForm.style.display = "none";
+    });
+
+    // Update invoice display
+    function updateInvoiceDisplay() {
+      const tbody = invoiceItemsTable.querySelector("tbody");
+      tbody.innerHTML = "";
+
+      if (invoiceItems.length === 0) {
+        tbody.innerHTML = `
+          <tr id="emptyInvoiceMessage">
+            <td colspan="5" class="text-center py-4 text-muted">
+              <i class="bi bi-cart-x display-6"></i>
+              <p class="mt-2 mb-0">No items added yet</p>
+            </td>
+          </tr>
+        `;
+        updateTotals();
+        return;
+      }
+
+      // Add items to table
+      invoiceItems.forEach((item, index) => {
+        const total = item.price * item.quantity;
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${item.name}</td>
+          <td>
+            <div class="input-group input-group-sm" style="max-width: 120px;">
+              <button class="btn btn-outline-secondary decrease-qty" type="button" data-index="${index}">
+                <i class="bi bi-dash"></i>
+              </button>
+              <input type="number" class="form-control text-center qty-input" 
+                     value="${item.quantity}" min="1" data-index="${index}">
+              <button class="btn btn-outline-secondary increase-qty" type="button" data-index="${index}">
+                <i class="bi bi-plus"></i>
+              </button>
+            </div>
+          </td>
+          <td>₹${item.price.toFixed(2)}</td>
+          <td>₹${total.toFixed(2)}</td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-danger remove-item" data-index="${index}">
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      // Add event listeners to quantity controls
+      document.querySelectorAll(".decrease-qty").forEach((btn) => {
+        btn.addEventListener("click", function () {
+          const index = parseInt(this.dataset.index);
+          if (invoiceItems[index].quantity > 1) {
+            invoiceItems[index].quantity--;
+            updateInvoiceDisplay();
+          }
+        });
+      });
+
+      document.querySelectorAll(".increase-qty").forEach((btn) => {
+        btn.addEventListener("click", function () {
+          const index = parseInt(this.dataset.index);
+          invoiceItems[index].quantity++;
+          updateInvoiceDisplay();
+        });
+      });
+
+      document.querySelectorAll(".qty-input").forEach((input) => {
+        input.addEventListener("change", function () {
+          const index = parseInt(this.dataset.index);
+          const newQty = parseInt(this.value) || 1;
+          invoiceItems[index].quantity = newQty;
+          updateInvoiceDisplay();
+        });
+      });
+
+      document.querySelectorAll(".remove-item").forEach((btn) => {
+        btn.addEventListener("click", function () {
+          const index = parseInt(this.dataset.index);
+          invoiceItems.splice(index, 1);
+          updateInvoiceDisplay();
+        });
+      });
+
+      // Update totals
+      updateTotals();
+    }
+
+    // Update totals calculation
+    function updateTotals() {
+      // Calculate subtotal
+      let subtotal = 0;
+      invoiceItems.forEach((item) => {
+        subtotal += item.price * item.quantity;
+      });
+      subtotalAmount.textContent = `₹${subtotal.toFixed(2)}`;
+
+      // Calculate tax
+      let tax = 0;
+      const taxTypeValue = document.getElementById("taxType").value;
+
+      if (taxTypeValue === "gst") {
+        tax = subtotal * 0.18;
+      } else if (taxTypeValue === "custom") {
+        tax = parseFloat(document.getElementById("taxAmount").value) || 0;
+      } else if (taxTypeValue === "percent") {
+        const percent = parseFloat(document.getElementById("taxPercentage").value) || 0;
+        tax = subtotal * (percent / 100);
+      }
+      taxAmountDisplay.textContent = `₹${tax.toFixed(2)}`;
+
+      // Calculate discount
+      let discount = 0;
+      const discountTypeValue = document.getElementById("discountType").value;
+
+      if (discountTypeValue === "amount") {
+        discount = parseFloat(document.getElementById("discountAmount").value) || 0;
+      } else if (discountTypeValue === "percent") {
+        const percent = parseFloat(document.getElementById("discountPercentage").value) || 0;
+        discount = subtotal * (percent / 100);
+      }
+      discountAmountDisplay.textContent = `₹${discount.toFixed(2)}`;
+
+      // Calculate total
+      const total = subtotal + tax - discount;
+      totalAmount.textContent = `₹${total.toFixed(2)}`;
+
+      // Update hidden field with invoice items data
+      invoiceItemsData.value = JSON.stringify(invoiceItems);
+    }
+
+    // Tax type change handler
+    document.getElementById("taxType").addEventListener("change", function () {
+      document.getElementById("taxCustomField").style.display = "none";
+      document.getElementById("taxPercentField").style.display = "none";
+
+      if (this.value === "custom") {
+        document.getElementById("taxCustomField").style.display = "block";
+      } else if (this.value === "percent") {
+        document.getElementById("taxPercentField").style.display = "block";
+      }
+
+      updateTotals();
+    });
+
+    // Discount type change handler
+    document.getElementById("discountType").addEventListener("change", function () {
+      document.getElementById("discountAmountField").style.display = "none";
+      document.getElementById("discountPercentField").style.display = "none";
+
+      if (this.value === "amount") {
+        document.getElementById("discountAmountField").style.display = "block";
+      } else if (this.value === "percent") {
+        document.getElementById("discountPercentField").style.display = "block";
+      }
+
+      updateTotals();
+    });
+
+    // Input change handlers for tax and discount
+    const taxAmountInput = document.getElementById("taxAmount");
+    const taxPercentageInput = document.getElementById("taxPercentage");
+    const discountAmountInput = document.getElementById("discountAmount");
+    const discountPercentageInput = document.getElementById("discountPercentage");
+
+    if (taxAmountInput) taxAmountInput.addEventListener("input", updateTotals);
+    if (taxPercentageInput) taxPercentageInput.addEventListener("input", updateTotals);
+    if (discountAmountInput) discountAmountInput.addEventListener("input", updateTotals);
+    if (discountPercentageInput) discountPercentageInput.addEventListener("input", updateTotals);
+
+    // Form submission
+    document.getElementById("invoiceForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      if (invoiceItems.length === 0) {
+        alert("Please add at least one item to the invoice");
+        return;
+      }
+
+      // Show loading state
+      const saveBtn = document.getElementById("saveInvoiceBtn");
+      const originalText = saveBtn.innerHTML;
+      saveBtn.innerHTML = '<i class="bi bi-spinner-border spinner-border-sm me-2"></i> Saving...';
+      saveBtn.disabled = true;
+
+      // Prepare form data
+      const formData = new FormData(this);
+      formData.append("invoice_items", JSON.stringify(invoiceItems));
+      formData.append("subtotal", subtotalAmount.textContent.replace("₹", "").replace(",", ""));
+      formData.append("tax", taxAmountDisplay.textContent.replace("₹", "").replace(",", ""));
+      formData.append("discount", discountAmountDisplay.textContent.replace("₹", "").replace(",", ""));
+      formData.append("total", totalAmount.textContent.replace("₹", "").replace(",", ""));
+
+      // Submit via AJAX
+      fetch("{% url 'create_invoice' %}", {
+        method: "POST",
+        body: formData,
+        headers: {
+          "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+        },
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            alert("Invoice saved successfully!");
+            window.location.href = `{% url 'invoice_detail' 0 %}`.replace('0', data.invoice_id);
+          } else {
+            alert("Error: " + (data.error || "Failed to save invoice"));
+          }
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+          alert("Failed to save invoice. Please try again.");
+        })
+        .finally(() => {
+          // Reset button state
+          saveBtn.innerHTML = originalText;
+          saveBtn.disabled = false;
+        });
+    });
+
+    // Print button functionality
+    document.getElementById("printInvoiceBtn").addEventListener("click", function () {
+      if (invoiceItems.length === 0) {
+        alert("Please add at least one item to the invoice");
+        return;
+      }
+
+      // Populate print template
+      document.getElementById("printInvoiceNumber").textContent = 
+        document.getElementById("invoiceNumber").textContent;
+      document.getElementById("printInvoiceDate").textContent = 
+        document.getElementById("invoiceDate").textContent;
+      document.getElementById("printCustomerName").textContent = 
+        document.getElementById("customerName").value || "Walk-in Customer";
+      document.getElementById("printCustomerPhone").textContent = 
+        document.getElementById("customerPhone").value || "N/A";
+      document.getElementById("printCustomerAddress").textContent = 
+        document.getElementById("customerAddress").value || "N/A";
+
+      const printItemsContainer = document.getElementById("printInvoiceItems");
+      printItemsContainer.innerHTML = "";
+
+      invoiceItems.forEach((item) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${item.name}</td>
+          <td>${item.quantity}</td>
+          <td>₹${item.price.toFixed(2)}</td>
+          <td>₹${(item.price * item.quantity).toFixed(2)}</td>
+        `;
+        printItemsContainer.appendChild(row);
+      });
+
+      document.getElementById("printSubtotal").textContent = subtotalAmount.textContent;
+      document.getElementById("printTax").textContent = taxAmountDisplay.textContent;
+      document.getElementById("printDiscount").textContent = discountAmountDisplay.textContent;
+      document.getElementById("printTotal").textContent = totalAmount.textContent;
+
+      // Create print window
+      const printContent = document.getElementById("printTemplate").innerHTML;
+      const printWindow = window.open("", "_blank", "width=800,height=600");
+      
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Invoice - ${document.getElementById("invoiceNumber").textContent}</title>
+          <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+          <style>
+            @media print {
+              body { padding: 20px; font-size: 12px; }
+              .no-print { display: none !important; }
+              .container { max-width: none !important; }
+            }
+            body { font-family: Arial, sans-serif; }
+          </style>
+        </head>
+        <body>
+          ${printContent}
+          <div class="text-center no-print mt-4">
+            <button class="btn btn-primary" onclick="window.print()">Print Invoice</button>
+            <button class="btn btn-secondary ms-2" onclick="window.close()">Close</button>
+          </div>
+        </body>
+        </html>
+      `);
+      
+      printWindow.document.close();
+      printWindow.focus();
+    });
+
+    // Initialize
+    updateInvoiceDisplay();
+  });
+</script>
+
+<style>
+  /* Custom styles for invoice creation */
+  .dropdown-menu {
+    padding: 0.5rem;
+  }
+
+  .item-option {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid #eee;
+  }
+
+  .item-option:hover {
+    background-color: #f8f9fa;
+  }
+
+  .qty-input {
+    max-width: 60px;
+  }
+
+  #invoiceItemsTable tbody tr td {
+    vertical-align: middle;
+  }
+
+  #selectedItemForm .card {
+    border-left: 3px solid #2ecc71;
+  }
+</style>
+{% endblock %}

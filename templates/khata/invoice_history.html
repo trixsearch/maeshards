@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="fw-bold">Invoice History</h1>
+            <p class="text-muted mb-0">View all generated invoices</p>
+        </div>
+        <a href="{% url 'create_invoice' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-2"></i>Create New Invoice
+        </a>
+    </div>
+
+    <!-- Invoices Table -->
+    <div class="card shadow">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Invoice #</th>
+                            <th>Customer</th>
+                            <th>Date</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for invoice in invoices %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="icon-circle bg-primary me-3">
+                                        <i class="bi bi-receipt text-white"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0">{{ invoice.invoice_number }}</h6>
+                                        <small class="text-muted">ID: {{ invoice.id }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    <h6 class="mb-0">{{ invoice.customer_name|default:"Walk-in Customer" }}</h6>
+                                    {% if invoice.customer_phone %}
+                                    <small class="text-muted">{{ invoice.customer_phone }}</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>{{ invoice.date|date:"M d, Y" }}<br><small class="text-muted">{{ invoice.date|time:"g:i A" }}</small></td>
+                            <td>{{ invoice.items.count }} item{{ invoice.items.count|pluralize }}</td>
+                            <td>
+                                <h6 class="mb-0">₹{{ invoice.total|floatformat:2 }}</h6>
+                                {% if invoice.discount_amount > 0 %}
+                                <small class="text-success">-₹{{ invoice.discount_amount|floatformat:2 }} discount</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'invoice_detail' invoice.id %}" class="btn btn-outline-primary" title="View Details">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <button class="btn btn-outline-secondary print-invoice" data-invoice-id="{{ invoice.id }}" title="Print">
+                                        <i class="bi bi-printer"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <div class="text-muted">
+                                    <i class="bi bi-receipt display-1"></i>
+                                    <p class="mt-3 mb-0">No invoices found</p>
+                                    <p>Create your first invoice to get started</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    {% if invoices %}
+    <div class="row mt-4">
+        <div class="col-md-3">
+            <div class="card border-primary h-100">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-primary">Total Invoices</h5>
+                    <h2 class="card-text">{{ invoices.count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-success h-100">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-success">Total Revenue</h5>
+                    <h2 class="card-text">₹{{ invoices|length|add:0 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-info h-100">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-info">This Month</h5>
+                    <h2 class="card-text">{{ invoices|length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-warning h-100">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-warning">Today</h5>
+                    <h2 class="card-text">0</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Print invoice buttons
+        document.querySelectorAll('.print-invoice').forEach(button => {
+            button.addEventListener('click', function() {
+                const invoiceId = this.dataset.invoiceId;
+                window.open(`{% url 'invoice_detail' 0 %}`.replace('0', invoiceId) + '?print=1', '_blank');
+            });
+        });
+    });
+</script>
+{% endblock %}
+
+<style>
+.icon-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+</style>

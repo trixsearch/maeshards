@@ -1,0 +1,318 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <!-- Dashboard Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="display-5 fw-bold">Inventory Dashboard</h1>
+            <p class="lead">Welcome back, Admin. Here's what's happening today.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'add_item' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>Add New Item
+            </a>
+            <a href="{% url 'create_invoice' %}" class="btn btn-success">
+                <i class="bi bi-receipt me-2"></i>Create Invoice
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card border-primary h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title text-muted">Total Items</h5>
+                            <h2 class="card-text fw-bold">{{ total_items }}</h2>
+                        </div>
+                        <div class="icon-circle bg-primary">
+                            <i class="bi bi-box text-white fs-4"></i>
+                        </div>
+                    </div>
+                    <p class="card-text text-success mt-2">
+                        <i class="bi bi-arrow-up"></i> {{ new_items_this_week }} new this week
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card border-success h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title text-muted">Inventory Value</h5>
+                            <h2 class="card-text fw-bold">₹{{ total_value|floatformat:2 }}</h2>
+                        </div>
+                        <div class="icon-circle bg-success">
+                            <i class="bi bi-currency-rupee text-white fs-4"></i>
+                        </div>
+                    </div>
+                    <p class="card-text text-success mt-2">
+                        <i class="bi bi-arrow-up"></i> {{ value_change_percent }}% from last week
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card border-warning h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title text-muted">Low Stock Items</h5>
+                            <h2 class="card-text fw-bold">{{ low_stock_count }}</h2>
+                        </div>
+                        <div class="icon-circle bg-warning">
+                            <i class="bi bi-exclamation-triangle text-white fs-4"></i>
+                        </div>
+                    </div>
+                    <p class="card-text text-danger mt-2">
+                        <i class="bi bi-arrow-up"></i> {{ low_stock_count }} items need attention
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card border-info h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title text-muted">Today's Invoices</h5>
+                            <h2 class="card-text fw-bold">{{ today_invoices }}</h2>
+                        </div>
+                        <div class="icon-circle bg-info">
+                            <i class="bi bi-receipt-cutoff text-white fs-4"></i>
+                        </div>
+                    </div>
+                    <p class="card-text text-success mt-2">
+                        <i class="bi bi-arrow-up"></i> ₹{{ today_sales|floatformat:2 }} in sales
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts and Tables Section -->
+    <div class="row">
+        <!-- Left Column: Charts -->
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Inventory Overview</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-center mb-3">Stock Distribution</h6>
+                            <div class="d-flex justify-content-center">
+                                <div style="width: 200px; height: 200px; position: relative;">
+                                    <canvas id="stockChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-center mb-3">Monthly Sales</h6>
+                            <div class="chart-container">
+                                <canvas id="salesChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Low Stock Items -->
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Low Stock Items</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for item in low_stock_items %}
+                        <a href="{% url 'edit_item' item.id %}" class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between">
+                                <span>{{ item.name }}</span>
+                                <span class="badge bg-danger">{{ item.quantity }} left</span>
+                            </div>
+                            <small class="text-muted">Ideal stock: {{ item.ideal_stock|default:"N/A" }}</small>
+                        </a>
+                        {% empty %}
+                        <div class="list-group-item">
+                            <p class="mb-0 text-center">No low stock items</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer text-center">
+                    <a href="{% url 'item_list' %}" class="btn btn-sm btn-outline-warning">View All Items</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Recent Activity</h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        {% for activity in recent_activities %}
+                        <div class="timeline-item">
+                            <div class="timeline-icon bg-{{ activity.color }}">
+                                <i class="bi bi-{{ activity.icon }}"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <span class="badge bg-{{ activity.color }}">{{ activity.type }}</span>
+                                <h6>{{ activity.title }}</h6>
+                                <p class="text-muted mb-0">{{ activity.description }}</p>
+                                <small class="text-muted">{{ activity.timestamp|timesince }} ago</small>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-3">
+                            <p class="text-muted">No recent activities</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // Initialize charts when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Stock Distribution Chart (Doughnut)
+        const stockCtx = document.getElementById('stockChart').getContext('2d');
+        const stockChart = new Chart(stockCtx, {
+            type: 'doughnut',
+            data: {
+                labels: {{ stock_distribution_labels|safe }},
+                datasets: [{
+                    data: {{ stock_distribution_data|safe }},
+                    backgroundColor: [
+                        '#3498db',
+                        '#2ecc71',
+                        '#f39c12',
+                        '#9b59b6',
+                        '#1abc9c',
+                        '#e74c3c'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        // Sales Chart (Bar)
+        const salesCtx = document.getElementById('salesChart').getContext('2d');
+        const salesChart = new Chart(salesCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ monthly_sales_labels|safe }},
+                datasets: [{
+                    label: 'Sales (₹)',
+                    data: {{ monthly_sales_data|safe }},
+                    backgroundColor: '#2ecc71',
+                    borderColor: '#27ae60',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₹' + value.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+
+<style>
+    /* Custom styles for dashboard */
+    .icon-circle {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 200px;
+    }
+    
+    /* Timeline styling */
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+    
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 9px;
+        top: 5px;
+        height: calc(100% - 10px);
+        width: 2px;
+        background-color: #e9ecef;
+    }
+    
+    .timeline-item {
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+    
+    .timeline-icon {
+        position: absolute;
+        left: -30px;
+        top: 0;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        color: white;
+    }
+    
+    .timeline-content {
+        padding: 10px 15px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        border-left: 3px solid #3498db;
+    }
+</style>
+{% endblock %}

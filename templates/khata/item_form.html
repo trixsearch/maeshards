@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow border-0 mb-5">
+                <div class="card-header bg-primary text-white py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0">
+                            {% if form.instance.id %}
+                                <i class="bi bi-pencil-square me-2"></i>Edit Item
+                            {% else %}
+                                <i class="bi bi-plus-circle me-2"></i>Add New Item
+                            {% endif %}
+                        </h3>
+                        <a href="{% url 'item_list' %}" class="btn btn-light btn-sm">
+                            <i class="bi bi-arrow-left me-1"></i>Back to List
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <!-- Name Field -->
+                        <div class="mb-4">
+                            <label for="id_name" class="form-label fw-bold">Item Name</label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.name.errors|first }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Enter the name of the item</div>
+                        </div>
+                        
+                        <!-- Description Field -->
+                        <div class="mb-4">
+                            <label for="id_description" class="form-label fw-bold">Description</label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.description.errors|first }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Add a detailed description of the item</div>
+                        </div>
+                        
+                        <!-- Price and Quantity Fields -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="id_price" class="form-label fw-bold">Price (₹)</label>
+                                {{ form.price }}
+                                {% if form.price.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.price.errors|first }}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">Enter the selling price per unit</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="id_quantity" class="form-label fw-bold">Quantity</label>
+                                {{ form.quantity }}
+                                {% if form.quantity.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.quantity.errors|first }}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">Current stock quantity</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Form Actions -->
+                        <div class="d-flex justify-content-between mt-5">
+                            {% if form.instance.id %}
+                                <a href="{% url 'delete_item' form.instance.id %}" class="btn btn-danger">
+                                    <i class="bi bi-trash me-1"></i>Delete Item
+                                </a>
+                            {% else %}
+                                <button type="reset" class="btn btn-outline-secondary">
+                                    <i class="bi bi-x-circle me-1"></i>Reset Form
+                                </button>
+                            {% endif %}
+                            <button type="submit" class="btn btn-primary">
+                                {% if form.instance.id %}
+                                    <i class="bi bi-check-circle me-1"></i>Update Item
+                                {% else %}
+                                    <i class="bi bi-plus-circle me-1"></i>Add Item
+                                {% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Recent Activity for Existing Items -->
+            {% if form.instance.id %}
+            <div class="card shadow border-0">
+                <div class="card-header bg-light py-3">
+                    <h5 class="mb-0">Recent Activity</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <span>Created</span>
+                                <span class="text-muted">{{ form.instance.created_at|date:"M d, Y H:i" }}</span>
+                            </div>
+                        </li>
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <span>Last Updated</span>
+                                <span class="text-muted">{{ form.instance.updated_at|date:"M d, Y H:i" }}</span>
+                            </div>
+                        </li>
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <span>Added to Invoices</span>
+                                <span class="text-muted">12 times</span>
+                            </div>
+                        </li>
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <span>Total Sales Quantity</span>
+                                <span class="text-muted">85 units</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add Bootstrap classes to form inputs
+        const inputs = document.querySelectorAll('input, textarea');
+        inputs.forEach(input => {
+            input.classList.add('form-control');
+            
+            // Add validation on blur
+            input.addEventListener('blur', function() {
+                if (this.value.trim() === '' && this.hasAttribute('required')) {
+                    this.classList.add('is-invalid');
+                } else {
+                    this.classList.remove('is-invalid');
+                }
+            });
+        });
+        
+        // Add class to textarea
+        document.getElementById('id_description').classList.add('form-control');
+    });
+</script>
+{% endblock %}

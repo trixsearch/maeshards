@@ -1,0 +1,326 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Add Items to Invoice: {{ invoice.invoice_number }}</h1>
+
+<!-- Searchable Dropdown for Items -->
+<div class="mb-3">
+    <label for="item-dropdown" class="form-label">Select Item:</label>
+    <div class="dropdown" style="width: 100%;">
+        <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" type="button" 
+                id="item-dropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            <span id="selected-item-text">Choose an item...</span>
+        </button>
+        <div class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
+            <div class="px-3 py-2">
+                <input type="text" class="form-control" id="item-search" 
+                       placeholder="Search items..." autocomplete="off">
+            </div>
+            <div class="dropdown-divider"></div>
+            <div id="items-list">
+                {% for item in items %}
+                <a class="dropdown-item item-option" href="#" 
+                   data-id="{{ item.id }}" 
+                   data-name="{{ item.name }}" 
+                   data-price="{{ item.price }}" 
+                   data-quantity="{{ item.quantity }}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ item.name }}</strong>
+                            {% if item.description %}
+                            <br><small class="text-muted">{{ item.description|truncatechars:50 }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-primary">₹{{ item.price }}</span>
+                            <br><small class="text-muted">Stock: {{ item.quantity }}</small>
+                        </div>
+                    </div>
+                </a>
+                {% empty %}
+                <div class="dropdown-item-text text-muted text-center">
+                    No items available
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Current Items List -->
+<h2>Current Items</h2>
+<ul id="current-items" class="list-group mb-3">
+    {% for item in invoice.items.all %}
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+        {{ item.quantity }} x {{ item.item.name }} 
+        <span class="badge bg-primary rounded-pill">₹{{ item.total_price }}</span>
+    </li>
+    {% endfor %}
+</ul>
+
+<!-- Subtotal -->
+<div class="mb-3">
+    <h4>Subtotal: ₹<span id="subtotal">{{ invoice.subtotal }}</span></h4>
+</div>
+
+<!-- Add Item Form -->
+<form method="post" id="add-item-form" class="mb-3">
+    {% csrf_token %}
+    <input type="hidden" name="item_id" id="item-id">
+    <div class="row">
+        <div class="col-md-4">
+            <label for="quantity" class="form-label">Quantity:</label>
+            <div class="input-group">
+                <button type="button" class="btn btn-outline-secondary" id="decrease-qty">-</button>
+                <input type="number" name="quantity" id="quantity" 
+                       class="form-control text-center" min="1" value="1" required>
+                <button type="button" class="btn btn-outline-secondary" id="increase-qty">+</button>
+            </div>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100" id="add-item-btn" disabled>
+                Add Item
+            </button>
+        </div>
+        <div class="col-md-4">
+            <div id="item-details" class="card" style="display: none;">
+                <div class="card-body p-2">
+                    <small class="text-muted">Price: ₹<span id="item-price">0</span></small><br>
+                    <small class="text-muted">Available: <span id="item-stock">0</span> units</small><br>
+                    <small class="text-muted">Total: ₹<span id="item-total">0</span></small>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<a href="{% url 'finalize_invoice' %}" class="btn btn-success">Finalize Invoice</a>
+
+<script>
+$(document).ready(function() {
+    console.log('Document ready - initializing dropdown search functionality');
+    
+    let selectedItem = null;
+    
+    // Get CSRF token
+    function getCSRFToken() {
+        return $('[name=csrfmiddlewaretoken]').val();
+    }
+    
+    // Search functionality within dropdown
+    $('#item-search').on('input', function(e) {
+        e.stopPropagation(); // Prevent dropdown from closing
+        const query = $(this).val().toLowerCase();
+        
+        $('.item-option').each(function() {
+            const itemName = $(this).data('name').toLowerCase();
+            const itemText = $(this).text().toLowerCase();
+            
+            if (itemName.includes(query) || itemText.includes(query)) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    });
+    
+    // Prevent dropdown from closing when clicking on search input
+    $('#item-search').on('click', function(e) {
+        e.stopPropagation();
+    });
+    
+    // Item selection from dropdown
+    $('.item-option').on('click', function(e) {
+        e.preventDefault();
+        
+        selectedItem = {
+            id: $(this).data('id'),
+            name: $(this).data('name'),
+            price: parseFloat($(this).data('price')),
+            quantity: parseInt($(this).data('quantity'))
+        };
+        
+        console.log('Selected item:', selectedItem);
+        
+        // Update UI
+        $('#selected-item-text').text(selectedItem.name);
+        $('#item-id').val(selectedItem.id);
+        $('#item-price').text(selectedItem.price.toFixed(2));
+        $('#item-stock').text(selectedItem.quantity);
+        $('#add-item-btn').prop('disabled', false);
+        $('#item-details').show();
+        
+        // Update total price
+        updateTotalPrice();
+        
+        // Close dropdown
+        $('.dropdown-toggle').dropdown('hide');
+        
+        // Focus on quantity input
+        $('#quantity').focus();
+    });
+    
+    // Quantity control buttons
+    $('#increase-qty').on('click', function() {
+        const qty = parseInt($('#quantity').val()) || 1;
+        const maxQty = selectedItem ? selectedItem.quantity : 999;
+        if (qty < maxQty) {
+            $('#quantity').val(qty + 1);
+            updateTotalPrice();
+        }
+    });
+    
+    $('#decrease-qty').on('click', function() {
+        const qty = parseInt($('#quantity').val()) || 1;
+        if (qty > 1) {
+            $('#quantity').val(qty - 1);
+            updateTotalPrice();
+        }
+    });
+    
+    // Update total price when quantity changes
+    $('#quantity').on('input', function() {
+        updateTotalPrice();
+        
+        // Validate quantity
+        const qty = parseInt($(this).val()) || 0;
+        const maxQty = selectedItem ? selectedItem.quantity : 0;
+        
+        if (qty > maxQty) {
+            $(this).val(maxQty);
+            alert(`Only ${maxQty} units available in stock`);
+        }
+        
+        if (qty < 1) {
+            $(this).val(1);
+        }
+    });
+    
+    // Update total price display
+    function updateTotalPrice() {
+        if (selectedItem) {
+            const qty = parseInt($('#quantity').val()) || 1;
+            const total = selectedItem.price * qty;
+            $('#item-total').text(total.toFixed(2));
+        }
+    }
+    
+    // Form submission
+    $('#add-item-form').on('submit', function(e) {
+        e.preventDefault();
+        
+        const itemId = $('#item-id').val();
+        const quantity = parseInt($('#quantity').val()) || 1;
+        
+        console.log('Submitting form:', itemId, quantity);
+        
+        if (!itemId || !selectedItem) {
+            alert('Please select an item first');
+            return;
+        }
+        
+        if (quantity < 1) {
+            alert('Please enter a valid quantity');
+            return;
+        }
+        
+        if (quantity > selectedItem.quantity) {
+            alert(`Only ${selectedItem.quantity} units available in stock`);
+            return;
+        }
+        
+        // Disable button during submission
+        $('#add-item-btn').prop('disabled', true).text('Adding...');
+        
+        const formData = {
+            'item_id': itemId,
+            'quantity': quantity,
+            'csrfmiddlewaretoken': getCSRFToken()
+        };
+        
+        console.log('Form data:', formData);
+        
+        $.post(window.location.href, formData)
+            .done(function(response) {
+                console.log('Add item response:', response);
+                
+                if (response.success) {
+                    // Add new item to the list
+                    const newItem = `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        ${response.quantity} x ${response.item_name} 
+                        <span class="badge bg-primary rounded-pill">₹${response.total_price}</span>
+                    </li>`;
+                    $('#current-items').append(newItem);
+                    
+                    // Update subtotal
+                    $('#subtotal').text(response.new_subtotal);
+                    
+                    // Update available stock in dropdown
+                    const newStock = selectedItem.quantity - quantity;
+                    selectedItem.quantity = newStock;
+                    $(`.item-option[data-id="${itemId}"]`).attr('data-quantity', newStock);
+                    $(`.item-option[data-id="${itemId}"] small:contains("Stock:")`).text(`Stock: ${newStock}`);
+                    $('#item-stock').text(newStock);
+                    
+                    // Reset form
+                    $('#quantity').val(1);
+                    updateTotalPrice();
+                    
+                    // Show success message
+                    alert('Item added successfully!');
+                    
+                    // Hide item if out of stock
+                    if (newStock <= 0) {
+                        $(`.item-option[data-id="${itemId}"]`).hide();
+                        resetSelection();
+                    }
+                } else {
+                    alert('Error: ' + response.error);
+                }
+            })
+            .fail(function(xhr, status, error) {
+                console.error('Add item failed:', error, xhr.responseText);
+                alert('Server error. Please try again.');
+            })
+            .always(function() {
+                // Re-enable button
+                $('#add-item-btn').prop('disabled', false).text('Add Item');
+            });
+    });
+    
+    // Reset selection
+    function resetSelection() {
+        selectedItem = null;
+        $('#selected-item-text').text('Choose an item...');
+        $('#item-id').val('');
+        $('#add-item-btn').prop('disabled', true);
+        $('#item-details').hide();
+        $('#quantity').val(1);
+    }
+});
+</script>
+
+<style>
+.dropdown-menu {
+    width: 100% !important;
+}
+
+.item-option {
+    white-space: normal !important;
+    padding: 10px 15px !important;
+}
+
+.item-option:hover {
+    background-color: #f8f9fa;
+}
+
+#item-details {
+    min-height: 80px;
+}
+
+.input-group .btn {
+    border-color: #ced4da;
+}
+</style>
+{% endblock %}
