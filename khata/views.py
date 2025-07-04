@@ -4,8 +4,11 @@ from .forms import ItemForm, InvoiceForm, AddItemForm
 from django.http import JsonResponse
 from django.db.models import Q
 from django.utils import timezone
-from django.db.models import Sum, Count, F, ExpressionWrapper, FloatField
-from datetime import timedelta
+from django.db.models import Sum, Count, F, ExpressionWrapper, FloatField,DecimalField
+from django.db.models.functions import TruncMonth, TruncYear
+from .models import Sale, InventoryLoss
+from datetime import timedelta,datetime
+import calendar
 import json
 import random
 from django.views.decorators.csrf import csrf_exempt
@@ -400,3 +403,59 @@ def item_search(request):
         ]
     
     return JsonResponse({'results': results})
+
+def sales_report(request):
+    # Get current month
+    now = timezone.now()
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    # Calculate totals
+    sales = Sale.objects.filter(sale_date__gte=month_start)
+    revenue = sales.aggregate(total=Sum('total_price'))['total'] or 0
+    
+    # Calculate profit (revenue - cost of goods sold)
+    profit_data = sales.annotate(
+        cost=ExpressionWrapper(F('product__cost_price') * F('quantity'), output_field=DecimalField())
+    ).aggregate(
+        total_cost=Sum('cost'),
+        total_revenue=Sum('total_price')
+    )
+    profit = (profit_data['total_revenue'] or 0) - (profit_data['total_cost'] or 0)
+    
+    # Calculate losses
+    losses = InventoryLoss.objects.filter(loss_date__gte=month_start)
+    total_loss = losses.aggregate(total=Sum('loss_value'))['total'] or 0
+    
+    # Daily sales data for chart
+    daily_sales = sales.annotate(day=TruncMonth('sale_date')).values('day').annotate(
+        daily_revenue=Sum('total_price')
+    ).order_by('day')
+    
+    # Prepare chart data
+    days_in_month = calendar.monthrange(now.year, now.month)[1]
+    labels = [str(day) for day in range(1, days_in_month + 1)]
+    revenue_data = [0] * days_in_month
+    
+    for sale in daily_sales:
+        day_index = sale['day'].day - 1
+        if day_index < len(revenue_data):
+            revenue_data[day_index] = float(sale['daily_revenue'])
+    
+    # Loss breakdown by category
+    loss_categories = losses.values('reason').annotate(
+        total=Sum('loss_value')
+    ).order_by('-total')
+    
+    # Prepare context
+    context = {
+        'current_month': now.strftime("%B %Y"),
+        'revenue': revenue,
+        'profit': profit,
+        'total_loss': total_loss,
+        'chart_labels': labels,
+        'revenue_data': revenue_data,
+        'loss_categories': [item['reason'] for item in loss_categories],
+        'loss_values': [float(item['total']) for item in loss_categories],
+    }
+    
+    return render(request, 'khata/sales_report.html', context)

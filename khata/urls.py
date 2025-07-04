@@ -15,6 +15,7 @@ urlpatterns = [
     path('invoice/finalize/', views.finalize_invoice, name='finalize_invoice'),
     path('invoice/<int:invoice_id>/', views.invoice_detail, name='invoice_detail'),
     path('invoice/history/', views.invoice_history, name='invoice_history'),
+    path('sales-report/', views.sales_report, name='sales_report'),
     
     # AJAX Endpoints
     path('search-items/', views.search_items, name='search_items'),

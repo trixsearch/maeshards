@@ -46,3 +46,34 @@ class InvoiceItem(models.Model):
 
     def __str__(self):
         return f"{self.quantity} x {self.item.name}"
+    
+class Product(models.Model):
+    name = models.CharField(max_length=100)
+    cost_price = models.DecimalField(max_digits=10, decimal_places=2)
+    selling_price = models.DecimalField(max_digits=10, decimal_places=2)
+
+class Sale(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+    total_price = models.DecimalField(max_digits=10, decimal_places=2)
+    sale_date = models.DateTimeField(auto_now_add=True)
+
+class InventoryLoss(models.Model):
+    LOSS_REASONS = [
+        ('DAMAGED', 'Damaged Goods'),
+        ('EXPIRED', 'Expired Products'),
+        ('THEFT', 'Theft'),
+        ('OTHER', 'Other Reasons'),
+    ]
+    
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+    reason = models.CharField(max_length=20, choices=LOSS_REASONS)
+    loss_value = models.DecimalField(max_digits=10, decimal_places=2)
+    loss_date = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True)
+    
+    def save(self, *args, **kwargs):
+        # Auto-calculate loss value
+        self.loss_value = self.product.cost_price * self.quantity
+        super().save(*args, **kwargs)
